@@ -5,6 +5,7 @@ import com.deep.notes.payload.request.NoteRequest;
 import com.deep.notes.security.services.UserDetailsImpl;
 import com.deep.notes.services.NoteService;
 import com.deep.notes.services.RateLimitingService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/notes")
+@Transactional
 public class NoteController {
     @Autowired
     NoteService noteService;
