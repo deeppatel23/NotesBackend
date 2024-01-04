@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -22,48 +23,52 @@ public class NoteService {
     }
 
     public ResponseEntity<?> getNoteByNoteId(Long userId, Long noteId){
-        Optional<Note> notes = noteRepository.findByUserIdAndNoteId(userId, noteId);
+        Optional<Note> notes = noteRepository.findByNoteId(noteId);
         if (notes.isEmpty())
-            return ResponseEntity.badRequest().body("Error: No note found");
+            return ResponseEntity.badRequest().body("Error: No note found.");
+        else if (!Objects.equals(notes.get().getUserId(), userId) && !notes.get().getIsNoteShared())
+            return ResponseEntity.badRequest().body("Error: Note access denied.");
         return ResponseEntity.ok(notes);
     }
 
     public ResponseEntity<?> createNote(Note note){
+        note.setIsNoteShared(false);
         noteRepository.save(note);
-        return ResponseEntity.ok("Note added successfully");
+        return ResponseEntity.ok("Note saved successfully.");
     }
 
     public ResponseEntity<?> deleteNote(Long userId, Long noteId){
         noteRepository.deleteByUserIdAndNoteId(userId, noteId);
-        return ResponseEntity.ok("Note deleted successfully");
+        return ResponseEntity.ok("Note deleted successfully.");
     }
 
-    public ResponseEntity<?> updateNote(Long id, Note newNote){
-        Optional<Note> oldNote = noteRepository.findByNoteId(id);
+    public ResponseEntity<?> updateNote(Long id, Note newNote, Long userId){
+        Optional<Note> oldNote = noteRepository.findByUserIdAndNoteId(userId, id);
         if (oldNote.isPresent()) {
-            newNote.setNoteId(id);
-            noteRepository.save(newNote);
-            return ResponseEntity.ok("Note updated successfully");
+            oldNote.get().setTitle(newNote.getTitle());
+            oldNote.get().setContent(newNote.getContent());
+            noteRepository.save(oldNote.get());
+            return ResponseEntity.ok("Note updated successfully.");
         }
-        return ResponseEntity.badRequest().body("Note with given id does not exist");
+        return ResponseEntity.badRequest().body("Note with given id does not exist.");
     }
 
     public ResponseEntity<?> searchNotes(Long userId, String query){
         Optional<List<Note>> notes = noteRepository.findByUserIdAndTitleContainingOrContentContaining(userId, query, query);
         if (notes.isPresent())
             return ResponseEntity.ok(notes);
-        return ResponseEntity.badRequest().body("No results found");
+        return ResponseEntity.badRequest().body("No results found.");
     }
 
     public ResponseEntity<?> shareNote(Long noteId, Long userId){
         // Check if the current user owns the note
-        Optional<Note> note = noteRepository.findByUserIdAndNoteId(noteId, userId);
+        Optional<Note> note = noteRepository.findByUserIdAndNoteId(userId, noteId);
         if (note.isPresent()){
             // Share the note
             note.get().setIsNoteShared(true);
             noteRepository.save(note.get());
-            return ResponseEntity.ok("Shared the note successfully");
+            return ResponseEntity.ok("Shared the note successfully.");
         }
-        return ResponseEntity.badRequest().body("Given note is not owned by the user");
+        return ResponseEntity.badRequest().body("Given note is not owned by the user.");
     }
 }

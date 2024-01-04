@@ -22,7 +22,7 @@ public class NoteController {
         return noteService.getNotes(userId);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{noteId}")
     ResponseEntity<?> getNoteByNoteId(Authentication authentication, @PathVariable Long noteId) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
         return noteService.getNoteByNoteId(userId, noteId);
@@ -45,8 +45,11 @@ public class NoteController {
 
     @PutMapping("/{id}")
     ResponseEntity<?> updateNote(@PathVariable Long id,
-                                 @RequestBody Note note) {
-        return noteService.updateNote(id, note);
+                                 @RequestBody Note note,
+            Authentication authentication) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+        return noteService.updateNote(id, note, userId);
     }
 
     @DeleteMapping("/{id}")
@@ -55,7 +58,7 @@ public class NoteController {
         return noteService.deleteNote(userId, id);
     }
 
-    @PostMapping("/{id}/share")
+    @PostMapping("/{noteId}/share")
     ResponseEntity<?> shareNote(@PathVariable Long noteId, Authentication authentication){
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
         return noteService.shareNote(noteId, userId);
