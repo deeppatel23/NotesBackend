@@ -4,6 +4,7 @@ import com.deep.notes.models.Note;
 import com.deep.notes.payload.request.NoteRequest;
 import com.deep.notes.security.services.UserDetailsImpl;
 import com.deep.notes.services.NoteService;
+import com.deep.notes.services.RateLimitingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,16 +17,23 @@ public class NoteController {
     @Autowired
     NoteService noteService;
 
+    @Autowired
+    RateLimitingService rateLimitingService;
+
     @GetMapping("/")
     ResponseEntity<?> getNotesByUserId(Authentication authentication) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return noteService.getNotes(userId);
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.getNotes(userId);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @GetMapping("/{noteId}")
     ResponseEntity<?> getNoteByNoteId(Authentication authentication, @PathVariable Long noteId) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return noteService.getNoteByNoteId(userId, noteId);
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.getNoteByNoteId(userId, noteId);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @PostMapping("/")
@@ -33,14 +41,18 @@ public class NoteController {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Long userId = userDetails.getId();
 
-        if (userId != null) {
-            Note note = new Note();
-            note.setUserId(userId);
-            note.setTitle(noteRequest.getTitle());
-            note.setContent(noteRequest.getContent());
-            return noteService.createNote(note);
+        if (rateLimitingService.allowRequest(userId.toString()))
+        {
+            if (userId != null) {
+                Note note = new Note();
+                note.setUserId(userId);
+                note.setTitle(noteRequest.getTitle());
+                note.setContent(noteRequest.getContent());
+                return noteService.createNote(note);
+            }
+            return ResponseEntity.badRequest().body("Authentication Failed");
         }
-        return ResponseEntity.badRequest().body("Authentication Failed");
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @PutMapping("/{id}")
@@ -49,24 +61,36 @@ public class NoteController {
             Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Long userId = userDetails.getId();
-        return noteService.updateNote(id, note, userId);
+
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.updateNote(id, note, userId);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @DeleteMapping("/{id}")
     ResponseEntity<?> deleteNoteById(@PathVariable Long id, Authentication authentication){
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return noteService.deleteNote(userId, id);
+
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.deleteNote(userId, id);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @PostMapping("/{noteId}/share")
     ResponseEntity<?> shareNote(@PathVariable Long noteId, Authentication authentication){
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return noteService.shareNote(noteId, userId);
+
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.shareNote(noteId, userId);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 
     @GetMapping("/search")
     ResponseEntity<?> searchQuery(@RequestParam String query, Authentication authentication){
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return noteService.searchNotes(userId, query);
+
+        if (rateLimitingService.allowRequest(userId.toString()))
+            return noteService.searchNotes(userId, query);
+        return ResponseEntity.status(429).body("Request limit exceeded");
     }
 }
